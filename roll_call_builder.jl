@@ -1,6 +1,34 @@
 using SunlightAPIs
 using DataFrames
 
+
+function build_roll_call(key, state, chamber, term)
+    term_str = !isempty(term) ? "term:$term" : "term"
+
+    bills = bill_search(key, state = state, chamber = chamber, search_window = term_str)
+    bill_ids = [ b["id"] for b in all_bills ]
+    bill_details = query_bill_details(key, bill_ids)
+
+    legislators = legislator_search(key, state = state, chamber = chamber, term = term)
+    leg_ids = [ convert(Symbol, l["leg_id"]) for l in legislators ]
+
+end
+
+function query_bill_details(key, bill_ids)
+    bill_details = Any[]
+
+    @sync begin
+        for bid in bill_ids
+            @async begin
+                push!(bill_details, bill_detail(key, open_states_id = bid))
+            end
+        end
+    end
+
+    bill_details
+end
+
+
 chamber = "upper"
 all_bills = bill_search(sunlight_key, state="ca", chamber="upper", search_window="term")
 all_leg = legislator_search(sunlight_key, state="ca", chamber="upper",active="false")
@@ -70,31 +98,22 @@ for v in all_votes
 	row_num = row_num + 1
 end
 
-println(rollcall)
+#println(rollcall)
 
+function initialize_mcmc(rollcall,colnames)
+	meanrollcall=copy(rollcall)
+	for c in colnames:
+		meanrollcall[c] = meanrollcall[c]-mean(meanrollcall[c])
+	end
+	iterator=eachrow(rollcall)
+	for i in 1:length(iterator)
+		sum=0
+		for j in 1:length(iterator[i])
+			sum=sum+iterator[i][j]
+		end
+		meanrow=sum/length(iterator[i])
+		for k in colnames
+			meanrow[i,k] = df[i,k] - meanrow
+		end
+	end
 
-function build_roll_call(key, state, chamber, term)
-    term_str = !isempty(term) ? "term:$term" : "term"
-
-    bills = bill_search(key, state = state, chamber = chamber, search_window = term_str)
-    bill_ids = [ b["id"] for b in all_bills ]
-    bill_details = query_bill_details(key, bill_ids)
-
-    legislators = legislator_search(key, state = state, chamber = chamber, term = term)
-    leg_ids = [ convert(Symbol, l["leg_id"]) for l in legislators ]
-
-end
-
-function query_bill_details(key, bill_ids)
-    bill_details = Any[]
-
-    @sync begin
-        for bid in bill_ids
-            @async begin
-                push!(bill_details, bill_detail(key, open_states_id = bid))
-            end
-        end
-    end
-
-    bill_details
-end
