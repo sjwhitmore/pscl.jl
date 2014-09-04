@@ -16,7 +16,7 @@ print(leg_ids)
 print(leg_id_symbols)
 
 
-bill_details = [bill_detail(sunlight_key, open_states_id = o) for o in b_ids]
+bill_details = [bill_detail(sunlight_key, open_states_id = o) for o in b_ids[1:2]]
 bill_votes = [b["votes"] for b in bill_details]
 all_votes=Any[]
 for b in bill_details
@@ -32,9 +32,12 @@ end
 #print(bill_details[1])
 
 rollcall=DataFrame([String,fill(Int,length(leg_ids))...], [:vote_id,leg_id_symbols...], length(all_votes))
-rollcall[2:end] = 0.5
+for col in leg_id_symbols
+	rollcall[col] = 0.5
+end
+
 #rollcall[:bill_id] = b_ids
-#println(rollcall)
+println(rollcall)
 
 row_num=1
 for v in all_votes
@@ -44,7 +47,7 @@ for v in all_votes
 		for vote in v["yes_votes"]
 			if vote["leg_id"] in leg_ids
 				leg = convert(Symbol,(vote["leg_id"]))
-				rollcall[row_num, leg] = 0
+				rollcall[row_num, leg] = 1
 			else
 				print("leg not there")
 				print(vote["leg_id"])
@@ -54,7 +57,7 @@ for v in all_votes
 		for vote in v["no_votes"]
 			if vote["leg_id"] in leg_ids
 				leg2 = convert(Symbol,(vote["leg_id"]))
-				rollcall[row_num,leg2] = 1
+				rollcall[row_num,leg2] = 0
 			else
 				print("leg not there")
 				print(vote["leg_id"])
