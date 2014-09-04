@@ -44,21 +44,20 @@ function build_roll_call(key, state, chamber, term)
     bill_details = query_bill_details(key, bill_ids)
     bill_votes = votes_for_chamber(bill_details, chamber)
 
-    roll_call = Array(Int, length(leg_ids), length(bill_votes))  #fill(0.5, length(leg_ids), length(bill_votes))
-
+    roll_call = Array(Float64, length(leg_ids), length(bill_votes))
 
     for i in 1:length(bill_votes)
         vote = bill_votes[i]
-        leg_votes = fill(0, length(leg_ids))
+        leg_votes = fill(0.5, length(leg_ids))
 
         yes_votes = [ v["leg_id"] for v in vote["yes_votes"] ]
         no_votes = [ v["leg_id"] for v in vote["no_votes"] ]
 
         for j in 1:length(leg_ids)
             if string(leg_ids[j]) in yes_votes
-                leg_votes[j] = 1
+                leg_votes[j] = 1.0
             elseif string(leg_ids[j]) in no_votes
-                leg_votes[j] = 2
+                leg_votes[j] = 0.0
             end
         end
 
