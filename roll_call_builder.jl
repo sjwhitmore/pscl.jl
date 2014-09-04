@@ -3,7 +3,7 @@ using DataFrames
 
 chamber = "upper"
 all_bills = bill_search(sunlight_key, state="ca", chamber="upper", search_window="term")
-all_leg = legislator_search(sunlight_key, state="ca", chamber="upper")
+all_leg = legislator_search(sunlight_key, state="ca", chamber="upper",active="false")
 
 b_ids=[b["id"] for b in all_bills]
 leg_ids = [l["leg_id"] for l in all_leg]
@@ -32,6 +32,7 @@ end
 #print(bill_details[1])
 
 rollcall=DataFrame([String,fill(Int,length(leg_ids))...], [:vote_id,leg_id_symbols...], length(all_votes))
+rollcall[2:end] = 0.5
 #rollcall[:bill_id] = b_ids
 #println(rollcall)
 
@@ -43,7 +44,7 @@ for v in all_votes
 		for vote in v["yes_votes"]
 			if vote["leg_id"] in leg_ids
 				leg = convert(Symbol,(vote["leg_id"]))
-				rollcall[row_num, leg] = 1
+				rollcall[row_num, leg] = 0
 			else
 				print("leg not there")
 				print(vote["leg_id"])
@@ -53,7 +54,7 @@ for v in all_votes
 		for vote in v["no_votes"]
 			if vote["leg_id"] in leg_ids
 				leg2 = convert(Symbol,(vote["leg_id"]))
-				rollcall[row_num,leg2] = 0
+				rollcall[row_num,leg2] = 1
 			else
 				print("leg not there")
 				print(vote["leg_id"])
@@ -66,10 +67,5 @@ for v in all_votes
 	row_num = row_num + 1
 end
 
+
 println(rollcall)
-#println(rollcall)
-#for b in bill_ids
-
-
-#println(bill_ids)
-#println(leg_ids)
