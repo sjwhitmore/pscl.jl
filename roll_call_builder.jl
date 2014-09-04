@@ -98,7 +98,24 @@ for v in all_votes
 	row_num = row_num + 1
 end
 
+<<<<<<< HEAD
 #println(rollcall)
+=======
+println(rollcall)
+
+
+function build_roll_call(key, state, chamber, term)
+    term_str = !isempty(term) ? "term:$term" : "term"
+
+    legislators = legislator_search(key, state = state, chamber = chamber, term = term)
+    leg_ids = [ convert(Symbol, l["leg_id"]) for l in legislators ]
+
+    bills = bill_search(key, state = state, chamber = chamber, search_window = term_str)
+    bill_ids = [ b["id"] for b in all_bills ]
+    bill_details = query_bill_details(key, bill_ids)
+    bill_votes = all_bill_votes(bill_details, chamber)
+
+end
 
 function initialize_mcmc(rollcall,colnames)
 	meanrollcall=copy(rollcall)
@@ -117,3 +134,15 @@ function initialize_mcmc(rollcall,colnames)
 		end
 	end
 
+
+function all_bill_votes(bill_details, chamber)
+    votes = Any[]
+
+    for b in bill_details
+        append!(votes, filter(b["votes"]) do v
+            v["chamber"] == chamber
+        end)
+    end
+    
+    votes
+end
