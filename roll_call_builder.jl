@@ -44,7 +44,6 @@ function build_roll_call(key, state, chamber, term)
     leg_ids = [ convert(Symbol, l["leg_id"]) for l in legislators ]
 
     bills = bill_search(key, state = state, chamber = chamber, search_window = term_str)
-    bills = bills[1:10]
     bill_ids = [ b["id"] for b in bills ]
     bill_details = query_bill_details(key, bill_ids)
     bill_votes = votes_for_chamber(bill_details, chamber)
