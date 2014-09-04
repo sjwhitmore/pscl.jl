@@ -1,7 +1,7 @@
 using SunlightAPIs
 using DataFrames
 
-
+chamber = "upper"
 all_bills = bill_search(sunlight_key, state="ca", chamber="upper", search_window="term")
 all_leg = legislator_search(sunlight_key, state="ca", chamber="upper")
 
@@ -12,33 +12,58 @@ leg_id_symbols = [convert(Symbol, l) for l in leg_ids]
 
 #bill
 
+print(leg_ids)
+print(leg_id_symbols)
 
-rollcall=DataFrame([String,fill(Int,length(leg_ids))...], [:bill_id,leg_id_symbols...], length(b_ids))
-rollcall[:bill_id] = b_ids
-println(rollcall)
 
 bill_details = [bill_detail(sunlight_key, open_states_id = o) for o in b_ids]
 bill_votes = [b["votes"] for b in bill_details]
-all_votes = [v[i] for i in length(bill_votes[j]), j in 1:length(bill_votes)]
-
-
-
+all_votes=Any[]
 for b in bill_details
-	#name = convert(Symbol, o)
-	row_num = 1
-	while rollcall[row_num, :bill_id] != b["id"]
-		row_num = row_num + 1
+	for j in b["votes"]
+		if j["chamber"] == chamber
+			push!(all_votes,j)
+		else
+			continue
+		end
 	end
-	#println(row_num)
-	for vote in b["votes"]
-		vote["votes"]
-		leg = convert(Symbol,(i["leg_id"]))
-		rollcall[row_num, leg] = 1
+end
+
+#print(bill_details[1])
+
+rollcall=DataFrame([String,fill(Int,length(leg_ids))...], [:vote_id,leg_id_symbols...], length(all_votes))
+#rollcall[:bill_id] = b_ids
+#println(rollcall)
+
+row_num=1
+for v in all_votes
+	#print(v)
+	if v["chamber"] == chamber
+		rollcall[row_num, :vote_id] = v["id"]
+		for vote in v["yes_votes"]
+			if vote["leg_id"] in leg_ids
+				leg = convert(Symbol,(vote["leg_id"]))
+				rollcall[row_num, leg] = 1
+			else
+				print("leg not there")
+				print(vote["leg_id"])
+				print(" ")
+			end
+		end
+		for vote in v["no_votes"]
+			if vote["leg_id"] in leg_ids
+				leg2 = convert(Symbol,(vote["leg_id"]))
+				rollcall[row_num,leg2] = 0
+			else
+				print("leg not there")
+				print(vote["leg_id"])
+				print(" ")
+			end
+		end
+	else
+		continue
 	end
-	#for j in b["votes"]["no_votes"]
-	#	leg2 = convert(Symbol,(j["leg_id"]))
-	#	rollcall[row_num,leg2] = 0
-	#end
+	row_num = row_num + 1
 end
 
 println(rollcall)
