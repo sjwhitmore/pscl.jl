@@ -2,7 +2,7 @@ using SunlightAPIs
 using DataFrames
 
 
-function all_bill_votes(bill_details, chamber)
+function votes_for_chamber(bill_details, chamber)
     votes = Any[]
 
     for b in bill_details
@@ -14,6 +14,25 @@ function all_bill_votes(bill_details, chamber)
     votes
 end
 
+function query_bill_details(key, bill_ids)
+    bill_details = Any[]
+
+    for bid in bill_ids
+        push!(bill_details, bill_detail(key, open_states_id = bid))
+    end
+
+    # TODO: make bill_detail requests async
+    # @sync begin
+    #     for bid in bill_ids
+    #         @async begin
+    #             push!(bill_details, bill_detail(key, open_states_id = bid))
+    #         end
+    #     end
+    # end
+
+    bill_details
+end
+
 function build_roll_call(key, state, chamber, term)
     term_str = !isempty(term) ? "term:$term" : "term"
 
@@ -21,94 +40,30 @@ function build_roll_call(key, state, chamber, term)
     leg_ids = [ convert(Symbol, l["leg_id"]) for l in legislators ]
 
     bills = bill_search(key, state = state, chamber = chamber, search_window = term_str)
-    bill_ids = [ b["id"] for b in all_bills ]
+    bill_ids = [ b["id"] for b in bills ]
     bill_details = query_bill_details(key, bill_ids)
-    bill_votes = all_bill_votes(bill_details, chamber)
+    bill_votes = votes_for_chamber(bill_details, chamber)
 
-end
+    roll_call = Array(Int, length(leg_ids), length(bill_votes))  #fill(0.5, length(leg_ids), length(bill_votes))
 
-function query_bill_details(key, bill_ids)
-    bill_details = Any[]
 
-    @sync begin
-        for bid in bill_ids
-            @async begin
-                push!(bill_details, bill_detail(key, open_states_id = bid))
+    for i in 1:length(bill_votes)
+        vote = bill_votes[i]
+        leg_votes = fill(0, length(leg_ids))
+
+        yes_votes = [ v["leg_id"] for v in vote["yes_votes"] ]
+        no_votes = [ v["leg_id"] for v in vote["no_votes"] ]
+
+        for j in 1:length(leg_ids)
+            if string(leg_ids[j]) in yes_votes
+                leg_votes[j] = 1
+            elseif string(leg_ids[j]) in no_votes
+                leg_votes[j] = 2
             end
         end
+
+        roll_call[:, i] = leg_votes
     end
 
-    bill_details
+    roll_call
 end
-
-
-chamber = "upper"
-all_bills = bill_search(sunlight_key, state="ca", chamber="upper", search_window="term")
-all_leg = legislator_search(sunlight_key, state="ca", chamber="upper",active="false")
-
-b_ids=[b["id"] for b in all_bills]
-leg_ids = [l["leg_id"] for l in all_leg]
-leg_id_symbols=Symbol[]
-leg_id_symbols = [convert(Symbol, l) for l in leg_ids]
-
-#bill
-
-print(leg_ids)
-print(leg_id_symbols)
-
-
-bill_details = [bill_detail(sunlight_key, open_states_id = o) for o in b_ids[1:2]]
-bill_votes = [b["votes"] for b in bill_details]
-all_votes=Any[]
-for b in bill_details
-	for j in b["votes"]
-		if j["chamber"] == chamber
-			push!(all_votes,j)
-		else
-			continue
-		end
-	end
-end
-
-#print(bill_details[1])
-
-rollcall=DataFrame([String,fill(Int,length(leg_ids))...], [:vote_id,leg_id_symbols...], length(all_votes))
-for col in leg_id_symbols
-	rollcall[col] = 0.5
-end
-
-#rollcall[:bill_id] = b_ids
-println(rollcall)
-
-row_num=1
-for v in all_votes
-	#print(v)
-	if v["chamber"] == chamber
-		rollcall[row_num, :vote_id] = v["id"]
-		for vote in v["yes_votes"]
-			if vote["leg_id"] in leg_ids
-				leg = convert(Symbol,(vote["leg_id"]))
-				rollcall[row_num, leg] = 1
-			else
-				print("leg not there")
-				print(vote["leg_id"])
-				print(" ")
-			end
-		end
-		for vote in v["no_votes"]
-			if vote["leg_id"] in leg_ids
-				leg2 = convert(Symbol,(vote["leg_id"]))
-				rollcall[row_num,leg2] = 0
-			else
-				print("leg not there")
-				print(vote["leg_id"])
-				print(" ")
-			end
-		end
-	else
-		continue
-	end
-	row_num = row_num + 1
-end
-
-println(rollcall)
