@@ -1,6 +1,10 @@
 using SunlightAPIs
 using DataFrames
 
+const VOTE_YES = 1.0
+const VOTE_NO = 0.0
+const VOTE_NA = 0.5
+
 
 function votes_for_chamber(bill_details, chamber)
     votes = Any[]
@@ -40,6 +44,7 @@ function build_roll_call(key, state, chamber, term)
     leg_ids = [ convert(Symbol, l["leg_id"]) for l in legislators ]
 
     bills = bill_search(key, state = state, chamber = chamber, search_window = term_str)
+    bills = bills[1:10]
     bill_ids = [ b["id"] for b in bills ]
     bill_details = query_bill_details(key, bill_ids)
     bill_votes = votes_for_chamber(bill_details, chamber)
@@ -48,16 +53,16 @@ function build_roll_call(key, state, chamber, term)
 
     for i in 1:length(bill_votes)
         vote = bill_votes[i]
-        leg_votes = fill(0.5, length(leg_ids))
+        leg_votes = fill(VOTE_NA, length(leg_ids))
 
         yes_votes = [ v["leg_id"] for v in vote["yes_votes"] ]
         no_votes = [ v["leg_id"] for v in vote["no_votes"] ]
 
         for j in 1:length(leg_ids)
             if string(leg_ids[j]) in yes_votes
-                leg_votes[j] = 1.0
+                leg_votes[j] = VOTE_YES
             elseif string(leg_ids[j]) in no_votes
-                leg_votes[j] = 0.0
+                leg_votes[j] = VOTE_NO
             end
         end
 
